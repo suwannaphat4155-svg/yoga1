@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YOLO Yoga Detection</title>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        h2, h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            margin: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+
+        video, img {
+            width: 100%;
+            border-radius: 10px;
+            margin: 15px 0;
+            background: #f0f0f0;
+        }
+
+        .tag {
+            background: #eee;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .health-report {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            margin: 15px 0;
+        }
+
+        .health-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .health-item:last-child {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .badge-good { background: #4CAF50; color: white; }
+        .badge-warning { background: #ff9800; color: white; }
+        .badge-danger { background: #f44336; color: white; }
+
+        .score-board {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .score-value {
+            font-size: 48px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .challenge-section {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .challenge-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+
+        .danger { color: #f44336; }
+        .warning { color: #ff9800; }
+        .success { color: #4CAF50; }
+    </style>
+</head>
+
+<body>
+
+<div class="main-container">
+    <!-- Left: Camera & Upload -->
+    <div class="container">
+        <h2>🎥 Yoga Camera</h2>
+
+        <div class="tag">Upload Image</div>
+        <input type="file" id="fileInput" accept="image/*"><br>
+        <button onclick="upload()">📤 Upload & Predict</button>
+
+        <hr>
+
+        <div class="tag">Live Camera (REAL-TIME)</div>
+        <video id="video" autoplay playsinline muted></video>
+
+        <canvas id="canvas" style="display:none;"></canvas>
+
+        <button onclick="toggleCamera()">📹 Toggle Camera</button>
+        <button onclick="stopCamera()" style="background: #f44336;">Stop Capture</button>
+        <button onclick="resetAll()" style="background: #2196F3;">🔄 Reset Data</button>
+    </div>
+
+    <!-- Right: Results & Stats -->
+    <div class="container">
+        <h2>📊 Detection Results</h2>
+        <div class="tag">Pose Label</div>
+        <div id="poseLabel" style="font-size: 20px; font-weight: bold; margin-bottom: 12px; color: #333;">ไม่พบท่า</div>
+        <img id="result" style="display:none;">
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">Accuracy</div>
+                <div class="stat-value" id="accuracy">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="accuracyBar"></div>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Pose Detected</div>
+                <div class="stat-value" id="poseCount">0</div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Hold Time</div>
+                <div class="stat-value" id="holdTime">0s</div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-label">Stability</div>
+                <div class="stat-value" id="stability">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="stabilityBar"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="score-board">
+            <div class="stat-label">Current Score</div>
+            <div class="score-value" id="score">0</div>
+            <div id="scoreMessage">Keep holding to improve!</div>
+        </div>
+    </div>
+
+    <!-- Bottom: Health Report & Challenges -->
+    <div class="container full-width">
+        <h2>📋 Health Report Summary</h2>
+        
+        <div class="health-report">
+            <div class="health-item">
+                <span>🎯 Pose Accuracy</span>
+                <span id="healthAccuracy" class="badge badge-good">90%</span>
+            </div>
+            <div class="health-item">
+                <span>⏱️ Average Hold Time</span>
+                <span id="healthHoldTime" class="badge badge-good">0s</span>
+            </div>
+            <div class="health-item">
+                <span>📍 Position Stability</span>
+                <span id="healthStability" class="badge badge-good">0%</span>
+            </div>
+            <div class="health-item">
+                <span>🔄 Consistency</span>
+                <span id="healthConsistency" class="badge badge-warning">⏳ Collecting data</span>
+            </div>
+            <div class="health-item">
+                <span>💪 Total Sessions</span>
+                <span id="totalSessions" class="badge" style="background: #2196F3; color: white;">0</span>
+            </div>
+        </div>
+
+        <h3>🏆 Challenge & Scoring System</h3>
+        <div class="challenge-section">
+            <div class="challenge-item">
+                <strong>🥇 Level 1: Beginner</strong><br>
+                Hold pose for 10 seconds at 70% accuracy<br>
+                <span class="success">✓ Unlocked</span>
+            </div>
+            <div class="challenge-item">
+                <strong>🥈 Level 2: Intermediate</strong><br>
+                Hold pose for 30 seconds at 85% accuracy<br>
+                <span id="level2Status" class="warning">🔒 Locked</span>
+            </div>
+            <div class="challenge-item">
+                <strong>🥉 Level 3: Advanced</strong><br>
+                Hold pose for 60 seconds at 95% accuracy<br>
+                <span id="level3Status" class="danger">🔒 Locked</span>
+            </div>
+            <div class="challenge-item">
+                <strong>⭐ Level 4: Master</strong><br>
+                Complete 10 sessions with consistent 90%+ accuracy<br>
+                <span id="level4Status" class="danger">🔒 Locked</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const resultImg = document.getElementById("result");
+
+let cameraActive = false;
+let captureActive = false;
+let sessionStats = {
+    totalFrames: 0,
+    correctFrames: 0,
+    holdTime: 0,
+    stabilityScores: [],
+    sessionCount: 0,
+    lastAccuracy: 0
+};
+
+// Open Camera
+function initCamera() {
+    if (cameraActive) {
+        console.log("📹 Camera already active");
+        return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            width: { ideal: 1280 }, 
+            height: { ideal: 720 },
+            facingMode: "user"
+        },
+        audio: false
+    })
+    .then(stream => {
+        video.srcObject = stream;
+        
+        // Wait for video to actually load
+        video.onplaying = () => {
+            cameraActive = true;
+            captureActive = true;
+            console.log("✓ กล้องเปิดได้ - เริ่มตรวจจับ");
+            startRealTimeDetection();
+        };
+        
+        video.play().catch(err => console.error("Play error:", err));
+    })
+    .catch(err => {
+        console.error("❌ เปิดกล้องไม่ได้:", err);
+        alert("เปิดกล้องไม่ได้\n\nข้อผิดพลาด: " + err.message + "\n\n✓ โปรดอนุญาตให้เข้าถึงกล้องบนเบราวเซอร์");
+    });
+}
+
+function toggleCamera() {
+    if (!cameraActive) {
+        initCamera();
+    } else {
+        console.log("📹 Camera is active, use Stop Capture to stop");
+    }
+}
+
+function stopCamera() {
+    captureActive = false;
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+    }
+    cameraActive = false;
+    if (detectionInterval) {
+        clearInterval(detectionInterval);
+    }
+    console.log("⏹️ Capture & Camera stopped");
+}
+
+function resetAll() {
+    sessionStats = {
+        totalFrames: 0,
+        correctFrames: 0,
+        holdTime: 0,
+        stabilityScores: [],
+        sessionCount: 0,
+        lastAccuracy: 0
+    };
+
+    document.getElementById("fileInput").value = "";
+    resultImg.style.display = "none";
+    resultImg.src = "";
+
+    document.getElementById("accuracy").textContent = "0%";
+    document.getElementById("accuracyBar").style.width = "0%";
+    document.getElementById("poseCount").textContent = "0";
+    document.getElementById("holdTime").textContent = "0s";
+    document.getElementById("stability").textContent = "0%";
+    document.getElementById("stabilityBar").style.width = "0%";
+    document.getElementById("score").textContent = "0";
+    document.getElementById("scoreMessage").textContent = "Keep holding to improve!";
+
+    document.getElementById("healthAccuracy").textContent = "0%";
+    document.getElementById("healthAccuracy").className = "badge badge-warning";
+    document.getElementById("healthHoldTime").textContent = "0s";
+    document.getElementById("healthStability").textContent = "0%";
+    document.getElementById("healthConsistency").textContent = "⏳ Collecting data";
+    document.getElementById("totalSessions").textContent = "0";
+
+    document.getElementById("level2Status").textContent = "🔒 Locked";
+    document.getElementById("level2Status").className = "warning";
+    document.getElementById("level3Status").textContent = "🔒 Locked";
+    document.getElementById("level3Status").className = "danger";
+    document.getElementById("level4Status").textContent = "🔒 Locked";
+    document.getElementById("level4Status").className = "danger";
+
+    console.log("🔄 All data reset");
+}
+
+// Upload File
+function upload() {
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) return alert("เลือกไฟล์ก่อน");
+    sendToServer(file);
+}
+
+// Send to Backend
+function sendToServer(file) {
+    const formData = new FormData();
+    if (file instanceof Blob) {
+        formData.append("file", file, "image.jpg");
+    } else {
+        formData.append("file", file);
+    }
+
+    fetchWithTimeout("/predict_ui", {
+        method: "POST",
+        body: formData
+    }, 10000)
+    .then(res => res.blob())
+    .then(blob => {
+        resultImg.style.display = "block";
+        resultImg.src = URL.createObjectURL(blob);
+        getJSONResults(file);
+    })
+    .catch(err => {
+        console.error("❌ ข้อผิดพลาด:", err);
+        alert("เกิดข้อผิดพลาด: " + err.message);
+    });
+}
+
+// Get JSON Results with Accuracy
+function getJSONResults(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    fetchWithTimeout("/predict_json", {
+        method: "POST",
+        body: formData
+    }, 10000)
+    .then(res => res.json())
+    .then(data => {
+        updateStats(data);
+        updateHealthReport(data);
+        updateChallengeStatus(data);
+    })
+    .catch(err => console.error("ข้อผิดพลาด JSON:", err));
+}
+
+// Update Statistics
+function updateStats(data) {
+    const accuracy = data.accuracy || 0;
+    const poseCount = data.pose_count || 0;
+
+    document.getElementById("accuracy").textContent = accuracy + "%";
+    document.getElementById("accuracyBar").style.width = accuracy + "%";
+    document.getElementById("poseCount").textContent = poseCount;
+    document.getElementById("poseLabel").textContent = data.pose_label || "ไม่พบท่า";
+
+    sessionStats.totalFrames++;
+    sessionStats.lastAccuracy = accuracy;
+    
+    if (accuracy > 70) {
+        sessionStats.correctFrames++;
+        sessionStats.holdTime += 0.8; // Each frame is ~0.8s
+    }
+
+    sessionStats.stabilityScores.push(accuracy);
+    const avgStability = Math.round(
+        sessionStats.stabilityScores.reduce((a, b) => a + b, 0) / sessionStats.stabilityScores.length
+    );
+    
+    document.getElementById("stability").textContent = avgStability + "%";
+    document.getElementById("stabilityBar").style.width = avgStability + "%";
+    document.getElementById("holdTime").textContent = Math.round(sessionStats.holdTime) + "s";
+
+    // Update Score
+    const score = Math.round((sessionStats.correctFrames / Math.max(sessionStats.totalFrames, 1)) * 100);
+    document.getElementById("score").textContent = score;
+    
+    let message = "";
+    if (score >= 90) message = "🌟 Excellent! Keep it up!";
+    else if (score >= 75) message = "👍 Good form!";
+    else if (score >= 60) message = "📈 Keep improving!";
+    else message = "💪 Keep practicing!";
+    
+    document.getElementById("scoreMessage").textContent = message;
+}
+
+// Update Health Report
+function updateHealthReport(data) {
+    const accuracy = data.accuracy || 0;
+
+    document.getElementById("healthAccuracy").textContent = accuracy + "%";
+    document.getElementById("healthAccuracy").className = 
+        accuracy >= 85 ? "badge badge-good" : 
+        accuracy >= 70 ? "badge badge-warning" : 
+        "badge badge-danger";
+
+    document.getElementById("healthHoldTime").textContent = 
+        Math.round(sessionStats.holdTime) + "s";
+
+    const avgStability = Math.round(
+        sessionStats.stabilityScores.length > 0 ?
+        sessionStats.stabilityScores.reduce((a, b) => a + b, 0) / sessionStats.stabilityScores.length : 0
+    );
+    
+    document.getElementById("healthStability").textContent = avgStability + "%";
+    document.getElementById("healthConsistency").textContent = 
+        sessionStats.totalFrames > 10 ? 
+        "✓ Good" : "⏳ Collecting data";
+}
+
+// Update Challenge Status
+function updateChallengeStatus(data) {
+    const accuracy = data.accuracy || 0;
+    const holdTime = sessionStats.holdTime;
+
+    // Level 2: 30s at 85%
+    if (holdTime >= 30 && accuracy >= 85) {
+        document.getElementById("level2Status").textContent = "✓ Unlocked!";
+        document.getElementById("level2Status").className = "success";
+    }
+
+    // Level 3: 60s at 95%
+    if (holdTime >= 60 && accuracy >= 95) {
+        document.getElementById("level3Status").textContent = "✓ Unlocked!";
+        document.getElementById("level3Status").className = "success";
+    }
+
+    // Level 4: 10 sessions with 90%+
+    if (sessionStats.sessionCount >= 10 && sessionStats.lastAccuracy >= 90) {
+        document.getElementById("level4Status").textContent = "⭐ Master!";
+        document.getElementById("level4Status").className = "success";
+    }
+}
+
+// Real-Time Detection
+let detectionInterval = null;
+let isProcessing = false;
+
+// Add request timeout helper
+function fetchWithTimeout(url, options = {}, timeout = 5000) {
+    return Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout')), timeout)
+        )
+    ]);
+}
+
+function startRealTimeDetection() {
+    // Wait for video to be ready
+    video.onloadedmetadata = () => {
+        console.log("✓ Video ready:", video.videoWidth, "x", video.videoHeight);
+        
+        detectionInterval = setInterval(() => {
+            if (!captureActive || video.videoWidth === 0 || isProcessing) return;
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0);
+
+            canvas.toBlob(blob => {
+                if (blob) {
+                    isProcessing = true;
+                    const formData = new FormData();
+                    formData.append("file", blob);
+                    
+                    fetchWithTimeout("/predict_json", {
+                        method: "POST",
+                        body: formData
+                    }, 3000)
+                    .then(res => {
+                        if (!res.ok) throw new Error("HTTP " + res.status);
+                        return res.json();
+                    })
+                    .then(data => {
+                        updateStats(data);
+                        updateHealthReport(data);
+                        updateChallengeStatus(data);
+                        isProcessing = false;
+                    })
+                    .catch(err => {
+                        console.error("❌ Real-time error:", err.message);
+                        isProcessing = false;
+                    });
+                }
+            }, "image/jpeg", 0.7);
+
+        }, 1000); // 1 frame per second for smooth real-time
+    };
+}
+
+// Initialize on load
+window.addEventListener('load', () => {
+    console.log("✓ Application loaded - Click 'Toggle Camera' to start");
+    sessionStats.sessionCount++;
+    document.getElementById("totalSessions").textContent = sessionStats.sessionCount;
+});
+
+// Auto-initialize camera when page loads (optional - remove if you want manual start)
+setTimeout(() => {
+    initCamera();
+}, 500);
+
+</script>
+
+</body>
+</html>
