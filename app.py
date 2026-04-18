@@ -6,7 +6,9 @@ import numpy as np
 
 app = Flask(__name__, template_folder="templates")
 
+# Load model
 model = YOLO("best.pt")
+print("✓ Model loaded successfully")
 
 
 @app.route("/")
@@ -29,11 +31,16 @@ def predict_ui():
             file.seek(0)
             img = Image.open(io.BytesIO(file.read()))
         
-        # Convert to RGB if needed
+        # Convert to RGB and resize for processing
         if img.mode != "RGB":
             img = img.convert("RGB")
-
-        results = model(img, conf=0.3)
+        
+        # Resize for consistent processing (maintain aspect ratio)
+        img.thumbnail((1280, 720), Image.Resampling.LANCZOS)
+        
+        print(f"Processing image size: {img.size}")
+        results = model(img, conf=0.25, verbose=False)  # Lower threshold for better detection
+        print(f"Detections found: {len(results[0].boxes) if results and len(results) > 0 else 0}")
         
         if not results or len(results) == 0:
             buf = io.BytesIO()
@@ -69,14 +76,19 @@ def predict_json():
             file.seek(0)
             img = Image.open(io.BytesIO(file.read()))
         
-        # Convert to RGB if needed
+        # Convert to RGB and resize for faster processing
         if img.mode != "RGB":
             img = img.convert("RGB")
-
-        # Run detection
-        results = model(img, conf=0.3)
+        
+        # Resize for consistent processing
+        img.thumbnail((1280, 720), Image.Resampling.LANCZOS)
+        
+        # Run detection with lower confidence for better results
+        results = model(img, conf=0.2, verbose=False)
+        print(f"[Detection] Got results: {type(results)}, len: {len(results) if results else 0}")
         
         if not results or len(results) == 0:
+            print("[Detection] No detections found")
             return jsonify({
                 "accuracy": 0,
                 "detections": [],
@@ -85,6 +97,7 @@ def predict_json():
             })
         
         result = results[0]
+        print(f"[Detection] Processing result - boxes: {len(result.boxes) if result.boxes else 0}")
         
         # Extract confidence scores and labels
         detections = []

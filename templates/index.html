@@ -331,6 +331,7 @@ function initCamera() {
         return;
     }
 
+    console.log("🎯 Requesting camera access...");
     navigator.mediaDevices.getUserMedia({ 
         video: { 
             width: { ideal: 1280 }, 
@@ -340,20 +341,30 @@ function initCamera() {
         audio: false
     })
     .then(stream => {
+        console.log("✓ Camera stream received");
         video.srcObject = stream;
         
         // Wait for video to actually load
         video.onplaying = () => {
+            console.log("✓ Video is playing");
             cameraActive = true;
             captureActive = true;
             console.log("✓ กล้องเปิดได้ - เริ่มตรวจจับ");
             startRealTimeDetection();
         };
         
-        video.play().catch(err => console.error("Play error:", err));
+        video.onerror = (err) => {
+            console.error("❌ Video error:", err);
+        };
+        
+        video.play().catch(err => {
+            console.error("❌ Play error:", err);
+            document.getElementById("poseLabel").textContent = "❌ ไม่สามารถเปิดกล้อง";
+        });
     })
     .catch(err => {
         console.error("❌ เปิดกล้องไม่ได้:", err);
+        document.getElementById("poseLabel").textContent = "❌ ไม่ได้รับอนุญาต";
         alert("เปิดกล้องไม่ได้\n\nข้อผิดพลาด: " + err.message + "\n\n✓ โปรดอนุญาตให้เข้าถึงกล้องบนเบราวเซอร์");
     });
 }
@@ -367,15 +378,28 @@ function toggleCamera() {
 }
 
 function stopCamera() {
+    console.log("⏹️ Stopping camera...");
     captureActive = false;
-    if (video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-    }
-    cameraActive = false;
+    isProcessing = false;
+    
+    // Clear detection interval
     if (detectionInterval) {
         clearInterval(detectionInterval);
+        detectionInterval = null;
+        console.log("✓ Detection interval cleared");
     }
-    console.log("⏹️ Capture & Camera stopped");
+    
+    // Stop video stream
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => {
+            track.stop();
+            console.log("✓ Track stopped");
+        });
+        video.srcObject = null;
+    }
+    
+    cameraActive = false;
+    console.log("✓ Camera stopped completely");
 }
 
 function resetAll() {
@@ -425,7 +449,7 @@ function upload() {
     sendToServer(file);
 }
 
-// Send to Backend
+// Send to Backend with better error handling
 function sendToServer(file) {
     const formData = new FormData();
     if (file instanceof Blob) {
@@ -434,11 +458,16 @@ function sendToServer(file) {
         formData.append("file", file);
     }
 
+    document.getElementById("poseLabel").textContent = "⏳ กำลังประมวลผล...";
+    
     fetchWithTimeout("/predict_ui", {
         method: "POST",
         body: formData
-    }, 10000)
-    .then(res => res.blob())
+    }, 15000)
+    .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+    })
     .then(blob => {
         resultImg.style.display = "block";
         resultImg.src = URL.createObjectURL(blob);
@@ -446,11 +475,13 @@ function sendToServer(file) {
     })
     .catch(err => {
         console.error("❌ ข้อผิดพลาด:", err);
-        alert("เกิดข้อผิดพลาด: " + err.message);
+        document.getElementById("poseLabel").textContent = "❌ เกิดข้อผิดพลาด";
+        alert("ไม่สามารถประมวลผลรูป: " + err.message);
     });
 }
 
-// Get JSON Results with Accuracy
+
+// Get JSON Results with Accuracy and better error handling
 function getJSONResults(file) {
     const formData = new FormData();
     formData.append("file", file);
@@ -458,35 +489,58 @@ function getJSONResults(file) {
     fetchWithTimeout("/predict_json", {
         method: "POST",
         body: formData
-    }, 10000)
-    .then(res => res.json())
-    .then(data => {
-        updateStats(data);
-        updateHealthReport(data);
-        updateChallengeStatus(data);
+    }, 15000)
+    .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
     })
-    .catch(err => console.error("ข้อผิดพลาด JSON:", err));
+    .then(data => {
+        console.log("Detection result:", data);
+        if (data.error) {
+            document.getElementById("poseLabel").textContent = "❌ " + data.error;
+        } else {
+            updateStats(data);
+            updateHealthReport(data);
+            updateChallengeStatus(data);
+        }
+    })
+    .catch(err => {
+        console.error("ข้อผิดพลาด JSON:", err);
+        document.getElementById("poseLabel").textContent = "❌ ไม่สามารถแยกวิเคราะห์";
+    });
 }
 
-// Update Statistics
+// Update Statistics with better feedback
 function updateStats(data) {
     const accuracy = data.accuracy || 0;
     const poseCount = data.pose_count || 0;
 
-    document.getElementById("accuracy").textContent = accuracy + "%";
-    document.getElementById("accuracyBar").style.width = accuracy + "%";
+    document.getElementById("accuracy").textContent = accuracy.toFixed(1) + "%";
+    document.getElementById("accuracyBar").style.width = Math.min(accuracy, 100) + "%";
     document.getElementById("poseCount").textContent = poseCount;
-    document.getElementById("poseLabel").textContent = data.pose_label || "ไม่พบท่า";
+    
+    // Better feedback when detection happens
+    if (poseCount > 0) {
+        document.getElementById("poseLabel").textContent = data.pose_label || "พบท่า";
+    } else {
+        document.getElementById("poseLabel").textContent = "❌ ไม่พบท่า - ลองใหม่";
+    }
 
     sessionStats.totalFrames++;
     sessionStats.lastAccuracy = accuracy;
     
-    if (accuracy > 70) {
+    if (accuracy > 50) {
         sessionStats.correctFrames++;
-        sessionStats.holdTime += 0.8; // Each frame is ~0.8s
+        sessionStats.holdTime += 1.6; // Adjusted for detection interval
     }
 
     sessionStats.stabilityScores.push(accuracy);
+    
+    // Limit array size
+    if (sessionStats.stabilityScores.length > 100) {
+        sessionStats.stabilityScores.shift();
+    }
+
     const avgStability = Math.round(
         sessionStats.stabilityScores.reduce((a, b) => a + b, 0) / sessionStats.stabilityScores.length
     );
@@ -503,6 +557,7 @@ function updateStats(data) {
     if (score >= 90) message = "🌟 Excellent! Keep it up!";
     else if (score >= 75) message = "👍 Good form!";
     else if (score >= 60) message = "📈 Keep improving!";
+    else if (poseCount === 0) message = "ต้องพบท่ากำลังออกกำลัง";
     else message = "💪 Keep practicing!";
     
     document.getElementById("scoreMessage").textContent = message;
@@ -571,17 +626,47 @@ function fetchWithTimeout(url, options = {}, timeout = 5000) {
 }
 
 function startRealTimeDetection() {
-    // Wait for video to be ready
-    video.onloadedmetadata = () => {
-        console.log("✓ Video ready:", video.videoWidth, "x", video.videoHeight);
+    console.log("🎬 Starting real-time detection...");
+    
+    // Check if metadata is already loaded
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+        console.log("✓ Video already ready:", video.videoWidth, "x", video.videoHeight);
+        startDetectionLoop();
+    } else {
+        // Wait for metadata to load
+        video.onloadedmetadata = () => {
+            console.log("✓ Video metadata loaded:", video.videoWidth, "x", video.videoHeight);
+            startDetectionLoop();
+        };
         
-        detectionInterval = setInterval(() => {
-            if (!captureActive || video.videoWidth === 0 || isProcessing) return;
+        video.oncanplay = () => {
+            if (video.videoWidth > 0 && !detectionInterval) {
+                console.log("✓ Video can play - starting detection");
+                startDetectionLoop();
+            }
+        };
+    }
+}
 
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+function startDetectionLoop() {
+    if (detectionInterval) {
+        console.log("⚠️ Detection already running");
+        return;
+    }
+    
+    console.log("▶️ Detection loop started");
+    detectionInterval = setInterval(() => {
+        if (!captureActive || video.videoWidth === 0 || isProcessing) {
+            return;
+        }
+
+        try {
+            // Use smaller size for faster processing
+            const scale = 0.6;
+            canvas.width = video.videoWidth * scale;
+            canvas.height = video.videoHeight * scale;
             const ctx = canvas.getContext("2d");
-            ctx.drawImage(video, 0, 0);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
             canvas.toBlob(blob => {
                 if (blob) {
@@ -592,39 +677,44 @@ function startRealTimeDetection() {
                     fetchWithTimeout("/predict_json", {
                         method: "POST",
                         body: formData
-                    }, 3000)
+                    }, 8000)
                     .then(res => {
                         if (!res.ok) throw new Error("HTTP " + res.status);
                         return res.json();
                     })
                     .then(data => {
-                        updateStats(data);
-                        updateHealthReport(data);
-                        updateChallengeStatus(data);
+                        if (data && !data.error) {
+                            updateStats(data);
+                            updateHealthReport(data);
+                            updateChallengeStatus(data);
+                        } else if (data && data.error) {
+                            console.warn("Detection error:", data.error);
+                        }
                         isProcessing = false;
                     })
                     .catch(err => {
-                        console.error("❌ Real-time error:", err.message);
+                        console.error("❌ Detection failed:", err.message);
                         isProcessing = false;
                     });
                 }
-            }, "image/jpeg", 0.7);
+            }, "image/jpeg", 0.5);
+        } catch (err) {
+            console.error("❌ Canvas error:", err.message);
+        }
 
-        }, 1000); // 1 frame per second for smooth real-time
-    };
+    }, 2500); // Every 2.5 seconds for better performance
+    
+    console.log("✓ Detection loop interval set");
 }
 
 // Initialize on load
 window.addEventListener('load', () => {
-    console.log("✓ Application loaded - Click 'Toggle Camera' to start");
+    console.log("✓ Application loaded - Click '📹 Toggle Camera' to start detection");
     sessionStats.sessionCount++;
     document.getElementById("totalSessions").textContent = sessionStats.sessionCount;
 });
 
-// Auto-initialize camera when page loads (optional - remove if you want manual start)
-setTimeout(() => {
-    initCamera();
-}, 500);
+// Don't auto-initialize - let user start manually
 
 </script>
 
