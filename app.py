@@ -3,12 +3,28 @@ from ultralytics import YOLO
 from PIL import Image
 import io
 import numpy as np
+import os
+import gdown
 
 app = Flask(__name__, template_folder="templates")
 
-# Load model
-model = YOLO("best.pt")
-print("✓ Model loaded successfully")
+# Load model from Google Drive
+def load_model():
+    model_path = "best.pt"
+    google_drive_id = "1lAz1yd2zufeq0GKmFNAmrPQkCB2Qdnv3"
+    
+    # Download if not exists
+    if not os.path.exists(model_path):
+        print("📥 Downloading model from Google Drive...")
+        url = f"https://drive.google.com/uc?id={google_drive_id}"
+        gdown.download(url, model_path, quiet=False)
+        print("✓ Model downloaded successfully")
+    
+    model = YOLO(model_path)
+    print("✓ Model loaded successfully")
+    return model
+
+model = load_model()
 
 
 @app.route("/")
