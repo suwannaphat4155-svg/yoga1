@@ -5,10 +5,11 @@
 
     <style>
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            font-family: 'Segoe UI', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #E8D5F2 0%, #D9C5E8 50%, #F0E5F9 100%);
             margin: 0;
             padding: 20px;
+            min-height: 100vh;
         }
 
         .main-container {
@@ -20,10 +21,16 @@
         }
 
         .container {
-            background: white;
+            background: linear-gradient(135deg, #FFFFFF 0%, #F8F3FC 100%);
             padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(178, 114, 214, 0.15);
+            border: 1px solid rgba(200, 150, 230, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .container:hover {
+            box-shadow: 0 12px 40px rgba(178, 114, 214, 0.25);
         }
 
         .full-width {
@@ -32,46 +39,63 @@
 
         h2, h3 {
             margin-top: 0;
-            color: #667eea;
+            color: #9B6BA8;
+            font-weight: 600;
+        }
+
+        h2 {
+            font-size: 26px;
+            margin-bottom: 15px;
         }
 
         button {
-            background: #667eea;
+            background: linear-gradient(135deg, #D8A8E8, #C280D0);
             color: white;
             border: none;
-            padding: 12px 18px;
+            padding: 12px 20px;
             margin: 8px;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(200, 128, 208, 0.3);
         }
 
         button:hover {
-            background: #764ba2;
-            transform: scale(1.05);
+            background: linear-gradient(135deg, #C280D0, #B26BD6);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(178, 114, 214, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
         }
 
         button:disabled {
-            background: #ccc;
+            background: #DDD;
             cursor: not-allowed;
             transform: scale(1);
+            box-shadow: none;
         }
 
         video, img {
             width: 100%;
-            border-radius: 10px;
+            border-radius: 15px;
             margin: 15px 0;
-            background: #f0f0f0;
+            background: linear-gradient(135deg, #F5F0F9, #EFE8F7);
+            border: 2px solid rgba(200, 150, 230, 0.2);
+            object-fit: cover;
         }
 
         .tag {
-            background: #eee;
-            padding: 8px 12px;
-            border-radius: 5px;
+            background: linear-gradient(135deg, #E8D5F2, #DFC8EA);
+            padding: 10px 14px;
+            border-radius: 8px;
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 700;
             margin: 10px 0;
+            color: #8B5A9C;
+            border-left: 4px solid #B26BD6;
         }
 
         .stats {
@@ -82,37 +106,54 @@
         }
 
         .stat-box {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #E8D5F2 0%, #D9C5E8 100%);
+            color: #5A3A6B;
+            padding: 25px;
+            border-radius: 15px;
             text-align: center;
+            border: 1px solid rgba(200, 150, 230, 0.3);
+            transition: all 0.3s;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(178, 114, 214, 0.2);
         }
 
         .stat-value {
-            font-size: 32px;
-            font-weight: bold;
+            font-size: 36px;
+            font-weight: 700;
             margin: 10px 0;
+            background: linear-gradient(135deg, #B26BD6, #9B5AC8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .stat-label {
-            font-size: 12px;
-            opacity: 0.9;
+            font-size: 13px;
+            opacity: 0.85;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .health-report {
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 10px;
-            border-left: 5px solid #667eea;
+            background: linear-gradient(135deg, #F8F3FC 0%, #F0E8F9 100%);
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 5px solid #B26BD6;
             margin: 15px 0;
+            border: 1px solid rgba(200, 150, 230, 0.2);
         }
 
         .health-item {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(200, 150, 230, 0.15);
+            color: #5A3A6B;
+            font-weight: 500;
         }
 
         .health-item:last-child {
@@ -121,72 +162,101 @@
 
         .badge {
             display: inline-block;
-            padding: 5px 10px;
+            padding: 6px 12px;
             border-radius: 20px;
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
-        .badge-good { background: #4CAF50; color: white; }
-        .badge-warning { background: #ff9800; color: white; }
-        .badge-danger { background: #f44336; color: white; }
+        .badge-good { background: #B4E7C5; color: #2D6A4F; }
+        .badge-warning { background: #FFD9A8; color: #8B4513; }
+        .badge-danger { background: #F5B8B8; color: #8B3A3A; }
 
         .score-board {
-            background: linear-gradient(135deg, #ffd700, #ffed4e);
-            padding: 20px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #E8D5F2 0%, #F5E6FB 100%);
+            padding: 25px;
+            border-radius: 15px;
             text-align: center;
             margin: 15px 0;
+            border: 2px solid #D8A8E8;
+            box-shadow: 0 8px 25px rgba(178, 114, 214, 0.2);
         }
 
         .score-value {
-            font-size: 48px;
-            font-weight: bold;
-            color: #333;
+            font-size: 54px;
+            font-weight: 800;
+            margin: 15px 0;
+            background: linear-gradient(135deg, #B26BD6, #9B5AC8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .progress-bar {
             width: 100%;
-            height: 10px;
-            background: #eee;
-            border-radius: 5px;
+            height: 12px;
+            background: rgba(200, 150, 230, 0.2);
+            border-radius: 10px;
             overflow: hidden;
-            margin: 10px 0;
+            margin: 12px 0;
+            border: 1px solid rgba(200, 150, 230, 0.3);
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
+            background: linear-gradient(90deg, #B26BD6, #D8A8E8);
             width: 0%;
             transition: width 0.3s ease;
+            border-radius: 10px;
         }
 
         input[type="file"] {
-            padding: 10px;
-            border: 2px solid #667eea;
-            border-radius: 5px;
+            padding: 12px;
+            border: 2px solid #D8A8E8;
+            border-radius: 10px;
             width: 100%;
             box-sizing: border-box;
+            background: linear-gradient(135deg, #F8F3FC, #F5F0F9);
+            color: #5A3A6B;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        input[type="file"]:hover {
+            border-color: #B26BD6;
+            background: linear-gradient(135deg, #F5F0F9, #F0E8F9);
         }
 
         .challenge-section {
-            background: #f0f0f0;
+            background: linear-gradient(135deg, #F8F3FC 0%, #F0E8F9 100%);
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 15px;
             margin: 15px 0;
+            border: 1px solid rgba(200, 150, 230, 0.2);
         }
 
         .challenge-item {
-            padding: 10px;
-            margin: 5px 0;
-            background: white;
-            border-left: 4px solid #667eea;
-            border-radius: 5px;
+            padding: 15px;
+            margin: 8px 0;
+            background: linear-gradient(135deg, #FFFFFF, #F8F3FC);
+            border-left: 5px solid #B26BD6;
+            border-radius: 10px;
+            transition: all 0.3s;
+            color: #5A3A6B;
+            font-weight: 500;
         }
 
-        .danger { color: #f44336; }
-        .warning { color: #ff9800; }
-        .success { color: #4CAF50; }
+        .challenge-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(178, 114, 214, 0.15);
+        }
+
+        .danger { color: #C85A6B; font-weight: 700; }
+        .warning { color: #D9994A; font-weight: 700; }
+        .success { color: #5A8F6B; font-weight: 700; }
     </style>
 </head>
 
